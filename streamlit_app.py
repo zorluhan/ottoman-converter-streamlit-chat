@@ -7,33 +7,22 @@ st.set_page_config(page_title="Ottoman Converter (Chat)", page_icon="🕌", layo
 st.title("Ottoman Letter Converter — Chat")
 st.caption("Type Turkish text; the assistant returns Ottoman Arabic script using Gemini 2.5 Pro.")
 
-# Sidebar settings
-with st.sidebar:
-    st.header("Settings")
-    # API key is read from secrets or environment; no input field
-    api_key = st.secrets.get("GOOGLE_API_KEY") or os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
-    model = st.selectbox("Model", ["gemini-2.5-pro"], index=0)
-    temperature = st.slider("Temperature", 0.0, 1.0, 0.0, 0.05)
-    normalize = st.checkbox("Normalize Unicode (NFKC)", value=True)
-    force_ng_final = st.checkbox("Force NG final glyph (ﯓ) when input ends with n/ng", value=True)
+# Configuration (no sidebar)
+API_KEY = st.secrets.get("GOOGLE_API_KEY") or os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+MODEL = "gemini-2.5-pro"
+TEMPERATURE = 0.0
+NORMALIZE = True
+FORCE_NG_FINAL = True
 
-    kb_file = st.file_uploader("Knowledgebase document (.txt, .pdf, .docx)", type=["txt", "pdf", "docx"], help="Used as reference each turn")
-    clear_btn = st.button("Clear chat", use_container_width=True)
-
-# Knowledgebase path handling
+# Knowledgebase path handling (auto-use ottoman.pdf if present)
 kb_path = None
-if kb_file is not None:
-    suffix = os.path.splitext(kb_file.name)[1]
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-        tmp.write(kb_file.getbuffer())
-        kb_path = tmp.name
-else:
-    default_pdf = os.path.join(os.path.dirname(__file__), "ottoman.pdf")
-    if os.path.exists(default_pdf):
-        kb_path = default_pdf
+default_pdf = os.path.join(os.path.dirname(__file__), "ottoman.pdf")
+if os.path.exists(default_pdf):
+    kb_path = default_pdf
+    st.info(f"Using knowledgebase: {os.path.basename(default_pdf)}")
 
 # Initialize chat history
-if "messages" not in st.session_state or clear_btn:
+if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # Render history
@@ -44,8 +33,7 @@ for msg in st.session_state.messages:
 # Chat input
 prompt = st.chat_input("Türkçe metni yazın…")
 if prompt:
-    # Validate API key
-    if not api_key:
+    if not API_KEY:
         st.error("Please set GOOGLE_API_KEY in Streamlit secrets or environment variables.")
     else:
         # Add user message
@@ -59,11 +47,11 @@ if prompt:
                 output = convert(
                     text=prompt,
                     kb_path=kb_path,
-                    api_key=api_key,
-                    model_name=model,
-                    temperature=temperature,
-                    normalize=normalize,
-                    force_ng_final=force_ng_final,
+                    api_key=API_KEY,
+                    model_name=MODEL,
+                    temperature=TEMPERATURE,
+                    normalize=NORMALIZE,
+                    force_ng_final=FORCE_NG_FINAL,
                 )
             st.code(output)
         # Save assistant reply
